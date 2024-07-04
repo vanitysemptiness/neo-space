@@ -1,8 +1,6 @@
-use macroquad::{color::WHITE, input::{mouse_position, show_mouse}, texture::{draw_texture, Texture2D}, window::{screen_height, screen_width}};
+use macroquad::prelude::*;
 
 use crate::{canvas_state::CanvasState, user_action_mode::UserActionMode};
-
-
 
 pub fn handle_cursor(mode: &UserActionMode, state: &CanvasState, cursors: &Cursors) {
     let (mouse_x, mouse_y) = mouse_position();
@@ -21,22 +19,28 @@ pub fn handle_cursor(mode: &UserActionMode, state: &CanvasState, cursors: &Curso
 
 pub fn draw_cursor(mode: &UserActionMode, state: &CanvasState, cursors: &Cursors) {
     let (mouse_x, mouse_y) = mouse_position();
-    let cursor_texture = match mode {
-        UserActionMode::DRAG => {
-            if state.is_dragging {
+    match mode {
+        UserActionMode::Grab => {
+            let cursor_texture = if state.is_dragging {
                 &cursors.grab
             } else {
                 &cursors.hand
-            }
+            };
+            draw_texture(
+                *cursor_texture,
+                mouse_x - cursor_texture.width() / 2.0,
+                mouse_y - cursor_texture.height() / 2.0,
+                WHITE,
+            );
         }
-    };
-    
-    draw_texture(
-        *cursor_texture,
-        mouse_x - cursor_texture.width() / 2.0,
-        mouse_y - cursor_texture.height() / 2.0,
-        WHITE,
-    );
+        UserActionMode::Draw => {
+            draw_circle_lines(mouse_x, mouse_y, state.current_size / 2.0, 1.0, state.current_color);
+        }
+        UserActionMode::Erase => {
+            draw_circle_lines(mouse_x, mouse_y, state.current_size / 2.0, 1.0, BLACK);
+            draw_circle(mouse_x, mouse_y, state.current_size / 2.0, Color::new(1.0, 1.0, 1.0, 0.2));
+        }
+    }
 }
 
 pub struct Cursors {

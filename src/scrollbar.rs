@@ -28,7 +28,6 @@ impl ScrollBarConfig {
 }
 
 /// The scrollbar has to display relative to how much in an infinite plane the user has scrolled
-/// 
 pub fn draw_scrollbar(scroll_bar_config: &ScrollBarConfig, camera: &Camera) {
     let scrollbar_width: f32 = scroll_bar_config.scrollbar_width;
     let background_color: Color = scroll_bar_config.background_color;

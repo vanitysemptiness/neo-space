@@ -8,25 +8,23 @@ use camera::Camera;
 mod grid;
 use grid::draw_grid;
 use scrollbar::{draw_scrollbar, handle_scroll, ScrollBarConfig};
-use user_action_mode::{observe_user_action, UserActionMode};
+use user_action_mode::{observe_user_action, UserActionMode, draw_canvas};
+use toolbar::Toolbar;
 
 mod scrollbar;
 mod user_action_mode;
 mod canvas_state;
 mod cursor;
 mod info_hud;
+mod toolbar;
 use info_hud::display_hud;
-
 
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut camera = Camera::new();
     let scroll_bar_config: ScrollBarConfig = ScrollBarConfig::new();
-    let mut canvas_state = CanvasState {
-        is_dragging: false,
-        last_mouse_position: Vec2::ZERO,
-    };
-    let current_user_action_mode = UserActionMode::DRAG;
+    let mut canvas_state = CanvasState::new();
+    let mut toolbar = Toolbar::new();
 
     // Load cursor images
     let cursors = Cursors {
@@ -34,8 +32,8 @@ async fn main() {
         grab: load_texture("src/assets/grab_cursor.png").await.unwrap(),
     };
 
-        // Hide the default system cursor
-        show_mouse(false);
+    // Hide the default system cursor
+    show_mouse(false);
 
     loop {
         clear_background(grid::BACKGROUND_COLOR);
@@ -43,12 +41,25 @@ async fn main() {
         handle_scroll(&mouse_wheel(), &mut camera);
         draw_scrollbar(&scroll_bar_config, &camera);
 
-        canvas_state = observe_user_action(&mut camera, &current_user_action_mode, canvas_state);
+        // Update canvas_state with current color and size from toolbar
+        canvas_state.current_color = toolbar.current_color;
+        canvas_state.current_size = toolbar.current_size;
+
+        canvas_state = observe_user_action(&mut camera, &toolbar.mode, canvas_state);
+
+        // Handle toolbar input
+        toolbar.handle_input(); // no need to capture the mode, handled in toolbar
+
+        // Draw the canvas content
+        draw_canvas(&canvas_state, &camera);
+
+        // Draw the toolbar
+        toolbar.draw();
 
         // Draw the appropriate cursor
-        draw_cursor(&current_user_action_mode, &canvas_state, &cursors);
+        draw_cursor(&toolbar.mode, &canvas_state, &cursors);
         // Handle cursor visibility and drawing
-        handle_cursor(&current_user_action_mode, &canvas_state, &cursors);
+        handle_cursor(&toolbar.mode, &canvas_state, &cursors);
         display_hud(&camera);
 
         next_frame().await
