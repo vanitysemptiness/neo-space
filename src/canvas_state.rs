@@ -6,6 +6,7 @@ pub struct CanvasState {
     pub drawn_points: Vec<DrawnPoint>,
     pub current_color: Color,
     pub current_size: f32,
+    pub current_stroke: Vec<Vec2>,
 }
 
 pub struct DrawnPoint {
@@ -22,6 +23,7 @@ impl CanvasState {
             drawn_points: Vec::new(),
             current_color: BLACK,
             current_size: 2.0,
+            current_stroke: Vec::new()
         }
     }
 }

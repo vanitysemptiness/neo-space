@@ -18,6 +18,7 @@ mod cursor;
 mod info_hud;
 mod toolbar;
 use info_hud::display_hud;
+mod line_smoothing;
 
 #[macroquad::main(window_conf)]
 async fn main() {

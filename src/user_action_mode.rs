@@ -1,12 +1,13 @@
 use macroquad::{
-    input::{is_mouse_button_down, is_mouse_button_pressed, mouse_position, MouseButton},
+    input::{is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, MouseButton},
     math::Vec2,
-    shapes::draw_circle,
+    shapes::{draw_circle, draw_line},
 };
 
 use crate::{
     camera::Camera,
     canvas_state::{CanvasState, DrawnPoint},
+    line_smoothing::catmull_rom_spline,
 };
 
 #[derive(Copy, Clone, PartialEq)]
@@ -58,35 +59,6 @@ pub fn handle_dragging(
     (is_dragging, last_mouse_position)
 }
 
-fn handle_drawing(state: &mut CanvasState, camera: &Camera) {
-    let current_position = camera.screen_to_world(mouse_position().into());
-
-    if is_mouse_button_pressed(MouseButton::Left) {
-        // Start a new line segment
-        state.drawn_points.push(DrawnPoint {
-            position: current_position,
-            color: state.current_color,
-            size: state.current_size,
-        });
-    } else if is_mouse_button_down(MouseButton::Left) {
-        if let Some(last_point) = state.drawn_points.last() {
-            let last_position = last_point.position;
-            let distance = Vec2::distance(last_position, current_position);
-            let num_points = (distance / (state.current_size * 0.5)).ceil() as usize;
-
-            for i in 1..=num_points {
-                let t = i as f32 / num_points as f32;
-                let interpolated_position = last_position.lerp(current_position, t);
-                state.drawn_points.push(DrawnPoint {
-                    position: interpolated_position,
-                    color: state.current_color,
-                    size: state.current_size,
-                });
-            }
-        }
-    }
-}
-
 fn handle_erasing(state: &mut CanvasState, camera: &Camera) {
     if is_mouse_button_down(MouseButton::Left) {
         let world_position = camera.screen_to_world(mouse_position().into());
@@ -97,14 +69,84 @@ fn handle_erasing(state: &mut CanvasState, camera: &Camera) {
     }
 }
 
+fn handle_drawing(state: &mut CanvasState, camera: &Camera) {
+    let current_position = camera.screen_to_world(mouse_position().into());
+
+    if is_mouse_button_pressed(MouseButton::Left) {
+        // Start a new line segment
+        state.current_stroke.clear();
+        state.current_stroke.push(current_position);
+        // Add this line to mark the start of a new stroke
+        state.drawn_points.push(DrawnPoint {
+            position: current_position,
+            color: state.current_color,
+            size: state.current_size,
+        });
+    } else if is_mouse_button_down(MouseButton::Left) {
+        // Add point to current stroke
+        if let Some(&last_position) = state.current_stroke.last() {
+            if (current_position - last_position).length() > 1.0 / camera.zoom {
+                state.current_stroke.push(current_position);
+            }
+        }
+    } else if is_mouse_button_released(MouseButton::Left) {
+        // Apply smoothing and add to drawn points
+        if state.current_stroke.len() >= 2 {
+            let smoothed_points = catmull_rom_spline(&state.current_stroke);
+            for point in smoothed_points {
+                state.drawn_points.push(DrawnPoint {
+                    position: point,
+                    color: state.current_color,
+                    size: state.current_size,
+                });
+            }
+        }
+        state.current_stroke.clear();
+        // Add this line to mark the end of the current stroke
+        state.drawn_points.push(DrawnPoint {
+            position: Vec2::new(f32::NAN, f32::NAN),
+            color: state.current_color,
+            size: state.current_size,
+        });
+    }
+}
+
 pub fn draw_canvas(state: &CanvasState, camera: &Camera) {
+    // Draw permanent lines
+    let mut last_point: Option<&DrawnPoint> = None;
     for point in &state.drawn_points {
-        let screen_position = camera.world_to_screen(point.position);
-        draw_circle(
-            screen_position.x,
-            screen_position.y,
-            point.size * camera.zoom,
-            point.color,
+        if point.position.x.is_nan() || point.position.y.is_nan() {
+            // This point marks the end of a stroke, reset last_point
+            last_point = None;
+            continue;
+        }
+        
+        if let Some(last) = last_point {
+            let start = camera.world_to_screen(last.position);
+            let end = camera.world_to_screen(point.position);
+            draw_line(
+                start.x,
+                start.y,
+                end.x,
+                end.y,
+                last.size * camera.zoom,
+                last.color,
+            );
+        }
+        last_point = Some(point);
+    }
+
+    // Draw current stroke
+    for points in state.current_stroke.windows(2) {
+        let start = camera.world_to_screen(points[0]);
+        let end = camera.world_to_screen(points[1]);
+        draw_line(
+            start.x,
+            start.y,
+            end.x,
+            end.y,
+            state.current_size * camera.zoom,
+            state.current_color,
         );
     }
 }

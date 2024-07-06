@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 macroquad = "0.3"
 egui-macroquad = "0.15"
+nalgebra = "0.32.1"
