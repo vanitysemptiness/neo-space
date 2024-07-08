@@ -2,34 +2,56 @@ use macroquad::{color::Color, math::{vec2, Vec2}, shapes::draw_circle, window::{
 
 use crate::camera::Camera;
 
-
-const GRID_SIZE: f32 = 20.0;
+const BASE_GRID_SIZE: f32 = 20.0;
 const NORMAL_DOT_COLOR: Color = Color::new(0.7, 0.9, 1.0, 1.0);
 const EMPHASIZED_DOT_COLOR: Color = Color::new(0.4, 0.7, 0.9, 1.0);
 pub const BACKGROUND_COLOR: Color = Color::new(0.95, 0.96, 0.98, 1.0);
+const DOT_SIZE: f32 = 1.0;
+const EMPHASIS_INTERVAL: i32 = 4;
 
 pub fn draw_grid(camera: &Camera) {
     let top_left = camera.screen_to_world(Vec2::ZERO);
     let bottom_right = camera.screen_to_world(vec2(screen_width(), screen_height()));
 
-    let base_step = GRID_SIZE;
-    let zoom_factor = 1.0 / camera.zoom;
-    let step = (base_step * zoom_factor.max(1.0)).round() as i32;
+    let zoom_factor = camera.zoom;
+    let grid_size = BASE_GRID_SIZE;
 
-    let start_x = (top_left.x / step as f32).floor() as i32 * step;
-    let start_y = (top_left.y / step as f32).floor() as i32 * step;
-    let end_x = (bottom_right.x / step as f32).ceil() as i32 * step;
-    let end_y = (bottom_right.y / step as f32).ceil() as i32 * step;
+    let start_x = (top_left.x / grid_size).floor() * grid_size;
+    let start_y = (top_left.y / grid_size).floor() * grid_size;
+    let end_x = (bottom_right.x / grid_size).ceil() * grid_size;
+    let end_y = (bottom_right.y / grid_size).ceil() * grid_size;
 
-    for x in (start_x..=end_x).step_by(step as usize) {
-        for y in (start_y..=end_y).step_by(step as usize) {
-            let world_pos = vec2(x as f32, y as f32);
+    let step = grid_size;
+
+    let mut x = start_x;
+    while x <= end_x {
+        let mut y = start_y;
+        while y <= end_y {
+            let world_pos = vec2(x, y);
             let screen_pos = camera.world_to_screen(world_pos);
-            let size = (1.0 * camera.zoom).clamp(0.5, 2.0);
-            let is_emphasized = (x / step) % 4 == 0 && (y / step) % 4 == 0;
-            let color = if is_emphasized { EMPHASIZED_DOT_COLOR } else { NORMAL_DOT_COLOR };
             
-            draw_circle(screen_pos.x, screen_pos.y, size, color);
+            let grid_x = (x / grid_size).round() as i32;
+            let grid_y = (y / grid_size).round() as i32;
+            
+            let should_draw = if zoom_factor >= 1.0 {
+                // When zooming in
+                (grid_x % zoom_factor.floor() as i32 == 0 && grid_y % zoom_factor.floor() as i32 == 0) ||
+                (grid_x % EMPHASIS_INTERVAL == 0 && grid_y % EMPHASIS_INTERVAL == 0)
+            } else {
+                // When zooming out
+                let hide_factor = (1.0 / zoom_factor).ceil() as i32;
+                grid_x % hide_factor == 0 && grid_y % hide_factor == 0
+            };
+            
+            if should_draw {
+                let is_emphasized = grid_x % EMPHASIS_INTERVAL == 0 && grid_y % EMPHASIS_INTERVAL == 0;
+                let color = if is_emphasized { EMPHASIZED_DOT_COLOR } else { NORMAL_DOT_COLOR };
+                
+                draw_circle(screen_pos.x, screen_pos.y, DOT_SIZE, color);
+            }
+            
+            y += step;
         }
+        x += step;
     }
 }
