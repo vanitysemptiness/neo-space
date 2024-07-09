@@ -16,6 +16,11 @@ impl Camera {
         }
     }
 
+    pub fn adjust_zoom(&mut self, delta: f32) {
+        let new_zoom = (self.zoom * (1.0 + delta)).clamp(0.1, 2.0);
+        self.zoom = new_zoom;
+    }
+
     pub fn world_to_screen(&self, world_pos: Vec2) -> Vec2 {
         (world_pos - self.position) * self.zoom + vec2(screen_width(), screen_height()) * 0.5
     }

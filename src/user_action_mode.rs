@@ -1,5 +1,7 @@
 use macroquad::{
-    input::{is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, MouseButton},
+    input::{
+        is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, mouse_wheel, MouseButton
+    },
     math::Vec2,
     shapes::{draw_circle, draw_line},
 };
@@ -20,23 +22,47 @@ pub enum UserActionMode {
 pub fn observe_user_action(
     camera: &mut Camera,
     mode: &UserActionMode,
-    mut state: CanvasState,
-) -> CanvasState {
+    state: &mut CanvasState,
+) {
+    handle_zoom(camera);
+
     match mode {
         UserActionMode::Grab => {
             let (is_dragging, last_mouse_position) =
                 handle_dragging(camera, state.is_dragging, state.last_mouse_position);
             state.is_dragging = is_dragging;
             state.last_mouse_position = last_mouse_position;
-        }
+        },
         UserActionMode::Draw => {
-            handle_drawing(&mut state, camera);
-        }
+            handle_drawing(state, camera);
+        },
         UserActionMode::Erase => {
-            handle_erasing(&mut state, camera);
+            handle_erasing(state, camera);
+        },
+    }
+}
+
+fn handle_zoom(camera: &mut Camera) {
+    let (_, wheel) = mouse_wheel();
+    if wheel != 0.0 {
+        let zoom_factor = if wheel > 0.0 { 0.1 } else { -0.1 };
+        
+        // Ignore zoom in attempts beyond 2x
+        if !(camera.zoom >= 2.0 && zoom_factor > 0.0) {
+            let new_zoom = (camera.zoom * (1.0 + zoom_factor)).clamp(0.1, 2.0);
+            
+            // Only apply zoom if it has changed
+            if new_zoom != camera.zoom {
+                let mouse_pos: Vec2 = mouse_position().into();
+                let before = camera.screen_to_world(mouse_pos);
+                
+                camera.zoom = new_zoom;
+                
+                let after = camera.screen_to_world(mouse_pos);
+                camera.position += before - after;
+            }
         }
     }
-    state
 }
 
 pub fn handle_dragging(
@@ -44,18 +70,24 @@ pub fn handle_dragging(
     mut is_dragging: bool,
     mut last_mouse_position: Vec2,
 ) -> (bool, Vec2) {
+    let current_mouse_position: Vec2 = mouse_position().into();
+
     if is_mouse_button_down(MouseButton::Left) {
         if !is_dragging {
+            // Start of a new drag
             is_dragging = true;
-            last_mouse_position = mouse_position().into();
+            last_mouse_position = current_mouse_position;
+        } else {
+            // Continuing to drag
+            let delta = (current_mouse_position - last_mouse_position) / camera.zoom;
+            camera.position -= delta;
+            last_mouse_position = current_mouse_position;
         }
-        let current_mouse_position: Vec2 = mouse_position().into();
-        let delta = (current_mouse_position - last_mouse_position) / camera.zoom;
-        camera.position -= delta;
-        last_mouse_position = current_mouse_position;
     } else {
+        // Mouse button is not down, end dragging if we were dragging
         is_dragging = false;
     }
+
     (is_dragging, last_mouse_position)
 }
 
@@ -111,6 +143,7 @@ fn handle_drawing(state: &mut CanvasState, camera: &Camera) {
     }
 }
 
+// TODO: Rethink how this is organized, drawing doesn't really make sense here
 pub fn draw_canvas(state: &CanvasState, camera: &Camera) {
     // Draw permanent lines
     let mut last_point: Option<&DrawnPoint> = None;
@@ -120,7 +153,7 @@ pub fn draw_canvas(state: &CanvasState, camera: &Camera) {
             last_point = None;
             continue;
         }
-        
+
         if let Some(last) = last_point {
             let start = camera.world_to_screen(last.position);
             let end = camera.world_to_screen(point.position);

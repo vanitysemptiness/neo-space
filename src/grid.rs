@@ -1,57 +1,73 @@
-use macroquad::{color::Color, math::{vec2, Vec2}, shapes::draw_circle, window::{screen_height, screen_width}};
-
+use macroquad::prelude::*;
 use crate::camera::Camera;
 
-const BASE_GRID_SIZE: f32 = 20.0;
-const NORMAL_DOT_COLOR: Color = Color::new(0.7, 0.9, 1.0, 1.0);
-const EMPHASIZED_DOT_COLOR: Color = Color::new(0.4, 0.7, 0.9, 1.0);
+const DOT_SIZE: f32 = 2.0;
+const DOT_SPACING: f32 = 20.0;
 pub const BACKGROUND_COLOR: Color = Color::new(0.95, 0.96, 0.98, 1.0);
-const DOT_SIZE: f32 = 1.0;
-const EMPHASIS_INTERVAL: i32 = 4;
+const DOT_COLOR: Color = Color::new(0.4, 0.7, 0.9, 1.0);
 
-pub fn draw_grid(camera: &Camera) {
-    let top_left = camera.screen_to_world(Vec2::ZERO);
-    let bottom_right = camera.screen_to_world(vec2(screen_width(), screen_height()));
+pub struct Grid {
+    dot_texture: Texture2D,
+}
 
-    let zoom_factor = camera.zoom;
-    let grid_size = BASE_GRID_SIZE;
-
-    let start_x = (top_left.x / grid_size).floor() * grid_size;
-    let start_y = (top_left.y / grid_size).floor() * grid_size;
-    let end_x = (bottom_right.x / grid_size).ceil() * grid_size;
-    let end_y = (bottom_right.y / grid_size).ceil() * grid_size;
-
-    let step = grid_size;
-
-    let mut x = start_x;
-    while x <= end_x {
-        let mut y = start_y;
-        while y <= end_y {
-            let world_pos = vec2(x, y);
-            let screen_pos = camera.world_to_screen(world_pos);
-            
-            let grid_x = (x / grid_size).round() as i32;
-            let grid_y = (y / grid_size).round() as i32;
-            
-            let should_draw = if zoom_factor >= 1.0 {
-                // When zooming in
-                (grid_x % zoom_factor.floor() as i32 == 0 && grid_y % zoom_factor.floor() as i32 == 0) ||
-                (grid_x % EMPHASIS_INTERVAL == 0 && grid_y % EMPHASIS_INTERVAL == 0)
-            } else {
-                // When zooming out
-                let hide_factor = (1.0 / zoom_factor).ceil() as i32;
-                grid_x % hide_factor == 0 && grid_y % hide_factor == 0
-            };
-            
-            if should_draw {
-                let is_emphasized = grid_x % EMPHASIS_INTERVAL == 0 && grid_y % EMPHASIS_INTERVAL == 0;
-                let color = if is_emphasized { EMPHASIZED_DOT_COLOR } else { NORMAL_DOT_COLOR };
-                
-                draw_circle(screen_pos.x, screen_pos.y, DOT_SIZE, color);
+impl Grid {
+    pub fn new() -> Self {
+        let texture_size = 32;
+        let mut image = Image::gen_image_color(texture_size, texture_size, Color::new(0.0, 0.0, 0.0, 0.0));
+        let center = texture_size as f32 / 2.0;
+        let radius = texture_size as f32 / 2.0;
+        
+        for y in 0..texture_size {
+            for x in 0..texture_size {
+                let dx = x as f32 - center;
+                let dy = y as f32 - center;
+                let distance = (dx * dx + dy * dy).sqrt();
+                if distance <= radius {
+                    let alpha = 1.0 - (distance / radius).powi(2);
+                    image.set_pixel(x.into(), y.into(), Color::new(1.0, 1.0, 1.0, alpha));
+                }
             }
-            
-            y += step;
         }
-        x += step;
+        
+        Grid {
+            dot_texture: Texture2D::from_image(&image),
+        }
+    }
+
+    pub fn draw(&self, camera: &Camera) {
+        let (screen_w, screen_h) = (screen_width(), screen_height());
+        let top_left = camera.screen_to_world(Vec2::new(0.0, 0.0));
+        let bottom_right = camera.screen_to_world(Vec2::new(screen_w, screen_h));
+
+        let start_x = (top_left.x / DOT_SPACING).floor() as i32;
+        let start_y = (top_left.y / DOT_SPACING).floor() as i32;
+        let end_x = (bottom_right.x / DOT_SPACING).ceil() as i32;
+        let end_y = (bottom_right.y / DOT_SPACING).ceil() as i32;
+
+        let scaled_size = (DOT_SIZE * camera.zoom).max(0.5);
+
+        // Implement Level of Detail
+        let lod_factor = (1.0 / camera.zoom).ceil() as i32;
+
+        for x in (start_x..=end_x).step_by(lod_factor as usize) {
+            for y in (start_y..=end_y).step_by(lod_factor as usize) {
+                let world_pos = Vec2::new(x as f32 * DOT_SPACING, y as f32 * DOT_SPACING);
+                let screen_pos = camera.world_to_screen(world_pos);
+                
+                if screen_pos.x >= -scaled_size && screen_pos.x <= screen_w + scaled_size && 
+                   screen_pos.y >= -scaled_size && screen_pos.y <= screen_h + scaled_size {
+                    draw_texture_ex(
+                        self.dot_texture,
+                        screen_pos.x - scaled_size / 2.0,
+                        screen_pos.y - scaled_size / 2.0,
+                        DOT_COLOR,
+                        DrawTextureParams {
+                            dest_size: Some(Vec2::new(scaled_size, scaled_size)),
+                            ..Default::default()
+                        },
+                    );
+                }
+            }
+        }
     }
 }
