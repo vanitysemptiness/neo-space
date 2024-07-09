@@ -44,6 +44,7 @@ impl Toolbar {
         }
         self.draw_size_slider();
         self.draw_current_color();
+        self.draw_fps_counter();
     }
 
     fn draw_button(&self, label: &str, index: usize, is_active: bool) {
@@ -99,6 +100,13 @@ impl Toolbar {
         };
         draw_rectangle(10.0, y, TOOLBAR_WIDTH - 20.0, 30.0, self.current_color);
         draw_rectangle_lines(10.0, y, TOOLBAR_WIDTH - 20.0, 30.0, 2.0, WHITE);
+    }
+
+    fn draw_fps_counter(&self) {
+        let fps = get_fps() as i32;
+        let fps_text = format!("FPS: {}", fps);
+        let y = screen_height() - 30.0;
+        draw_text(&fps_text, 10.0, y, 20.0, WHITE);
     }
 
     pub fn handle_input(&mut self) -> Option<UserActionMode> {
