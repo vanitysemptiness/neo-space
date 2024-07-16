@@ -16,7 +16,6 @@ impl Grid {
         let mut image = Image::gen_image_color(texture_size, texture_size, Color::new(0.0, 0.0, 0.0, 0.0));
         let center = texture_size as f32 / 2.0;
         let radius = texture_size as f32 / 2.0;
-        
         for y in 0..texture_size {
             for x in 0..texture_size {
                 let dx = x as f32 - center;
@@ -24,11 +23,10 @@ impl Grid {
                 let distance = (dx * dx + dy * dy).sqrt();
                 if distance <= radius {
                     let alpha = 1.0 - (distance / radius).powi(2);
-                    image.set_pixel(x.into(), y.into(), Color::new(1.0, 1.0, 1.0, alpha));
+                    image.set_pixel(x as u32, y as u32, Color::new(1.0, 1.0, 1.0, alpha));
                 }
             }
         }
-        
         Grid {
             dot_texture: Texture2D::from_image(&image),
         }
@@ -45,16 +43,15 @@ impl Grid {
         let end_y = (bottom_right.y / DOT_SPACING).ceil() as i32;
 
         let scaled_size = (DOT_SIZE * camera.zoom).max(0.5);
-
-        // Implement Level of Detail
         let lod_factor = (1.0 / camera.zoom).ceil() as i32;
+
+        let dest_size = Vec2::new(scaled_size, scaled_size);
 
         for x in (start_x..=end_x).step_by(lod_factor as usize) {
             for y in (start_y..=end_y).step_by(lod_factor as usize) {
                 let world_pos = Vec2::new(x as f32 * DOT_SPACING, y as f32 * DOT_SPACING);
                 let screen_pos = camera.world_to_screen(world_pos);
-                
-                if screen_pos.x >= -scaled_size && screen_pos.x <= screen_w + scaled_size && 
+                if screen_pos.x >= -scaled_size && screen_pos.x <= screen_w + scaled_size &&
                    screen_pos.y >= -scaled_size && screen_pos.y <= screen_h + scaled_size {
                     draw_texture_ex(
                         self.dot_texture,
@@ -62,7 +59,7 @@ impl Grid {
                         screen_pos.y - scaled_size / 2.0,
                         DOT_COLOR,
                         DrawTextureParams {
-                            dest_size: Some(Vec2::new(scaled_size, scaled_size)),
+                            dest_size: Some(dest_size),
                             ..Default::default()
                         },
                     );
