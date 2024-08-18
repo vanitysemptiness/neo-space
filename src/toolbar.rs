@@ -1,5 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
+
 use macroquad::prelude::*;
-use crate::user_action_mode::UserActionMode;
+use crate::{canvas::DrawingCanvas, user_action_mode::UserActionMode};
 
 const TOOLBAR_WIDTH: f32 = 100.0;
 const BUTTON_HEIGHT: f32 = 60.0;
@@ -15,10 +17,11 @@ pub struct Toolbar {
     pub current_size: f32,
     colors: Vec<Color>,
     show_color_picker: bool,
+    canvas: Rc<RefCell<DrawingCanvas>>,
 }
 
 impl Toolbar {
-    pub fn new() -> Self {
+    pub fn new(canvas: Rc<RefCell<DrawingCanvas>>) -> Self {
         Toolbar {
             mode: UserActionMode::Grab,
             current_color: BLACK,
@@ -28,6 +31,7 @@ impl Toolbar {
                 PINK, BROWN, WHITE, GRAY, BLACK,
             ],
             show_color_picker: false,
+            canvas,
         }
     }
 
@@ -151,6 +155,7 @@ impl Toolbar {
             
             if index < self.colors.len() {
                 self.current_color = self.colors[index];
+                self.canvas.borrow_mut().set_color(self.current_color);
             }
         }
     }
@@ -164,6 +169,7 @@ impl Toolbar {
         if mouse_y >= slider_y && mouse_y <= slider_y + SIZE_SLIDER_HEIGHT {
             let (mouse_x, _) = mouse_position();
             self.current_size = ((mouse_x - 10.0) / (TOOLBAR_WIDTH - 20.0) * 20.0).clamp(1.0, 20.0);
+            self.canvas.borrow_mut().set_thickness(self.current_size);
         }
     }
 }

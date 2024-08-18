@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infinite Dot Grid Background with LOD</title>
     <style>
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
         }
+
         #grid-container {
             width: 400%;
             height: 400%;
@@ -22,6 +25,7 @@
             background-size: 20px 20px;
             transform-origin: center center;
         }
+
         #canvas {
             position: absolute;
             top: 0;
@@ -31,6 +35,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="grid-container"></div>
     <canvas id="canvas"></canvas>
@@ -39,13 +44,11 @@
         const gridContainer = document.getElementById('grid-container');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-
         let scale = 1;
         let translateX = 0;
         let translateY = 0;
-
-        const MAX_SCALE = 5;    // Zoom in limit
-        const MIN_SCALE = 0.25; // Zoom out limit
+        const MAX_SCALE = 5;
+        const MIN_SCALE = 0.25;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -56,42 +59,35 @@
         function updateGrid() {
             const baseBgSize = 20;
             let bgSize = baseBgSize * scale;
-            
-            // Implement level of detail
             let lodLevel = 0;
             while (bgSize < 10 && lodLevel < 3) {
                 bgSize *= 2;
                 lodLevel++;
             }
-            
             const offsetX = (translateX * scale) % bgSize;
             const offsetY = (translateY * scale) % bgSize;
-            
             gridContainer.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
             gridContainer.style.transform = `scale(${scale})`;
-            
             gridContainer.style.backgroundSize = `${bgSize}px ${bgSize}px`;
-            
-            // Adjust dot size based on scale and LOD
+
             const baseDotSize = 1;
             const minDotSize = 0.5;
             const maxDotSize = 2;
             const dotSize = Math.min(maxDotSize, Math.max(minDotSize, baseDotSize * Math.pow(2, lodLevel) * Math.pow(scale, 0.5)));
-            
-            // Adjust dot opacity based on scale
+
             const baseOpacity = 0.5;
             const minOpacity = 0.2;
             const maxOpacity = 0.8;
             const opacity = Math.min(maxOpacity, Math.max(minOpacity, baseOpacity * Math.pow(scale, 0.3)));
-            
-            gridContainer.style.backgroundImage = `radial-gradient(circle, rgba(0, 0, 0, ${opacity}) ${dotSize}px, transparent ${dotSize}px)`;
+
+            // Changed the color to a brighter light blue (0, 191, 255) - Deep Sky Blue
+            gridContainer.style.backgroundImage = `radial-gradient(circle, rgba(0, 191, 255, ${opacity}) ${dotSize}px, transparent ${dotSize}px)`;
         }
 
         function update() {
             updateGrid();
         }
 
-        // Pan functionality
         let isDragging = false;
         let lastX, lastY;
 
@@ -117,18 +113,14 @@
             isDragging = false;
         });
 
-        // Zoom functionality
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-            
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-            
             let newScale = scale * zoomFactor;
             newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
-            
             if (newScale !== scale) {
                 const zoomFactor = newScale / scale;
                 translateX += (mouseX / scale) * (1 - 1 / zoomFactor);
@@ -138,12 +130,11 @@
             }
         }, { passive: false });
 
-        // Initial setup
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
-
-        // Initial update
+        update();
         update();
     </script>
 </body>
+
 </html>

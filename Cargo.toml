@@ -1,9 +1,17 @@
 [package]
-name = "canvas"
+name = "neospace"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/main.rs"
 
 [dependencies]
 macroquad = "0.3"
 egui-macroquad = "0.15"
 nalgebra = "0.32.1"
+wasm-bindgen = "0.2"
+
+[profile.release]
+opt-level = "s"

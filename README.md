@@ -7,6 +7,17 @@ Download, embed, share the code as much as you want. No corporate middle men.
 
 Eventually there will be a SDK developed allowing for the easy integration of the canvas and various drawing features. 
 
+# Building and Running the Project
+local: in project root
+```bash
+cargo run
+```
+web assembly
+```bash
+cargo build --target wasm32-unknown-unknown --release
+wasm-bindgen --out-dir ./pkg --target web ./target/wasm32-unknown-unknown/release/neospace.wasm
+```
+
 # helpful git commands for contributing
 fork the original repo, download it, and work off a new branch
 ```bash
